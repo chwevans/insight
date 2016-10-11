@@ -28,6 +28,10 @@ start(_Type, _StartArgs) -> insight_sup:start_link().
 -spec stop(term()) -> ok.
 stop(_State) -> ok.
 
+%% @doc
+%% Main entry point into using insight.
+%% Each function head exists to check required arguments for different measurement modes.
+%% @end
 -spec measure(f(), map()) -> {error, short_circuited | timeout} | ok | term().
 measure(Function, #{short_circuit := work}) ->
   work(Function);
@@ -42,12 +46,19 @@ record(Function, BaseOptions) ->
   Options = maps:merge(?DEFAULT_OPTIONS, BaseOptions),
   cast(Function, Options).
 
+%% Function that controls whether the work done should be spawned.
+%% Note that timing out a spawned function is valid
 cast(Function, Options = #{spawn := false}) ->
   timeout(Function, Options);
 cast(Function, Options = #{spawn := true}) ->
   spawn(fun() -> timeout(Function, Options) end),
   ok.
 
+%% Function that controls timing out of the work.
+%% This is achieved by spawning a process and having it send a message back.
+%% If no message is received in timeout milliseconds, it continues execution.
+%% This is also where killing of the spawned process is handled in case its desired
+%% to halt execution prematurely.
 timeout(Function, Options = #{timeout := undefined}) ->
   delta_metrics(Function, Options);
 timeout(Function, Options = #{timeout := Timeout, brutal_kill := BrutalKill}) when is_integer(Timeout) andalso is_boolean(BrutalKill) ->
@@ -64,6 +75,7 @@ timeout(Function, Options = #{timeout := Timeout, brutal_kill := BrutalKill}) wh
       {error, timeout}
   end.
 
+%% Collect metrics before and after doing work as well as timing of the work.
 delta_metrics(Function, Options) ->
   % TODO: Move metric filtering to before we actually record it
   StartMetrics = erlang:process_info(self(), ?METRICS_TO_COLLECT),
