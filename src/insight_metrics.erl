@@ -26,7 +26,6 @@ start_link() ->
 
 -spec record(insight:metric(), binary(), pos_integer()) -> ok.
 record(completed, _Label, 1) ->
-  %ets:update_counter(?MODULE, {completed, Label}, 1);
   ok;
 record(Type, Label, Amount) ->
   Timestamp = os:system_time(micro_seconds),

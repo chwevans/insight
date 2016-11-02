@@ -9,10 +9,15 @@
 ]).
 
 -type metric() :: reductions | timing | completed.
--type f() :: {atom(), atom(), list(term())} | fun(() -> term()).
+-type func() :: {atom(), atom(), list(term())} | fun(() -> Result :: term()).
+-type options() :: #{timeout => undefined | pos_integer(), label => undefined | binary(),
+                     brutal_kill => boolean(), spawn => boolean(),
+                     metric_function => {atom(), atom()}, metrics => [atom()]}.
 
 -export_type([
-  metric/0
+  metric/0,
+  func/0,
+  options/0
 ]).
 
 -define(METRICS_TO_COLLECT, [reductions]).
@@ -31,11 +36,14 @@ stop(_State) -> ok.
 %% @doc
 %% Main entry point into using insight.
 %% Each function head exists to check required arguments for different measurement modes.
+%%
+%% If timeout/spawn/short_circuit are not used, the result of the function is always returned.
+%% There is no wrapping done on a succesful response.
 %% @end
--spec measure(f(), map()) -> {error, short_circuited | timeout} | ok | term().
+-spec measure(func(), options()) -> {error, short_circuited | timeout} | ok | term().
 measure(Function, #{short_circuit := work}) ->
   work(Function);
-measure(_Fucntion, #{short_circuit := true}) ->
+measure(_Function, #{short_circuit := true}) ->
   {error, short_circuited};
 measure(Function, BaseOptions = #{label := Label}) when is_function(Function) andalso is_binary(Label) ->
   record(Function, BaseOptions);
